@@ -16,5 +16,8 @@ Pod::Spec.new do |s|
   s.source_files = "ios/**/*.{h,m,mm,swift,cpp}"
   s.private_header_files = "ios/**/*.h"
 
+  s.dependency 'MediaPipeTasksVision', '~> 0.10.14'
+  s.dependency "VisionCamera"
+
   install_modules_dependencies(s)
 end

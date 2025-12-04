@@ -1,5 +1,11 @@
-#import <MediapipePosedetectionSpec/MediapipePosedetectionSpec.h>
+#import "MediapipePosedetectionSpec.h"
+#import <Foundation/Foundation.h>
+#import <React/RCTInvalidating.h>
 
-@interface MediapipePosedetection : NSObject <NativeMediapipePosedetectionSpec>
+NS_ASSUME_NONNULL_BEGIN
+
+@interface MediapipePosedetection : NativeMediapipePosedetectionSpecBase <NativeMediapipePosedetectionSpec, RCTInvalidating>
 
 @end
+
+NS_ASSUME_NONNULL_END
