@@ -16,14 +16,26 @@ import React
 
 @objc(PoseDetectionModule)
 public class PoseDetectionModule: NSObject {
-  private static var nextId = 22              // Equivalent to Kotlin's starting point
-   static var detectorMap = [Int: PoseDetectorHelper]()  // Maps to the Kotlin detectorMap
+  private static var nextId = 22 // Starting handle
+  // Internal map: handle -> native helper
+  static var detectorMap = [Int: PoseDetectorHelper]()
 
   @objc public weak var delegate: PoseDetectionModuleDelegate?
+
+  // Event throttling for live stream
+  private let eventQueue = DispatchQueue(
+    label: "com.mediapipe.posedetection.events",
+    qos: .userInitiated
+  )
+  private var lastEventTime: [Int: TimeInterval] = [:]  // per‑detector
+  private let minEventInterval: TimeInterval = 0.066    // ~15 FPS
+  private var droppedFrameCount: [Int: Int] = [:]
 
   @objc public static func requiresMainQueueSetup() -> Bool {
     return false
   }
+
+  // MARK: - Detector lifecycle
 
   @objc public func createDetector(
     _ numPoses: NSInteger,
@@ -57,8 +69,8 @@ public class PoseDetectionModule: NSObject {
         delegate: delegate,
         runningMode: mode
       )
-      helper.liveStreamDelegate = self
 
+      helper.liveStreamDelegate = self
       PoseDetectionModule.detectorMap[id] = helper
       resolve(id)
     } catch let error as NSError {
@@ -72,17 +84,23 @@ public class PoseDetectionModule: NSObject {
     rejecter reject: @escaping RCTPromiseRejectBlock
   ) {
     if PoseDetectionModule.detectorMap.removeValue(forKey: handle) != nil {
+      lastEventTime.removeValue(forKey: handle)
+      droppedFrameCount.removeValue(forKey: handle)
       resolve(true)
     } else {
       resolve(false)
     }
   }
-  
+
   @objc public func releaseAllDetectors() {
     let count = PoseDetectionModule.detectorMap.count
     PoseDetectionModule.detectorMap.removeAll()
+    lastEventTime.removeAll()
+    droppedFrameCount.removeAll()
     print("🗑️ Released all \(count) detectors")
   }
+
+  // MARK: - One‑shot image detection (DO NOT USE FOR LIVE STREAM)
 
   @objc public func detectOnImage(
     _ imagePath: String,
@@ -96,6 +114,7 @@ public class PoseDetectionModule: NSObject {
     resolver resolve: @escaping RCTPromiseResolveBlock,
     rejecter reject: @escaping RCTPromiseRejectBlock
   ) {
+    // Single‑use helper – do NOT store it in detectorMap
     do {
       let helper = try PoseDetectorHelper(
         handle: 0,
@@ -108,6 +127,7 @@ public class PoseDetectionModule: NSObject {
         delegate: delegate,
         runningMode: RunningMode.image
       )
+
       helper.liveStreamDelegate = self
 
       let image = try loadImageFromPath(from: imagePath)
@@ -149,35 +169,64 @@ public class PoseDetectionModule: NSObject {
     }
   }
 
-  // MARK: - Event Emission Helpers
+  // MARK: - Event helpers
 
   private func sendErrorEvent(handle: Int, message: String, code: Int) {
-    delegate?.onError(
-      handle: handle,
-      body: ["handle": handle, "message": message, "code": code]
-    )
+    // Errors are rare: just forward to JS
+    eventQueue.async { [weak self] in
+      guard let self = self else { return }
+      DispatchQueue.main.async {
+        self.delegate?.onError(
+          handle: handle,
+          body: ["handle": handle, "message": message, "code": code]
+        )
+      }
+    }
   }
 
   private func sendResultsEvent(handle: Int, bundle: PoseDetectionResultBundle) {
-    var resultArgs = convertPdResultBundleToDictionary(bundle)
-    resultArgs["handle"] = handle
-    delegate?.onResults(handle: handle, body: resultArgs)
+    eventQueue.async { [weak self] in
+      guard let self = self else { return }
+
+      let now = Date().timeIntervalSince1970
+      let last = self.lastEventTime[handle] ?? 0
+      let dt = now - last
+
+      if dt >= self.minEventInterval {
+        var resultArgs = convertPdResultBundleToDictionary(bundle)
+        resultArgs["handle"] = handle
+
+        DispatchQueue.main.async {
+          self.delegate?.onResults(handle: handle, body: resultArgs)
+        }
+
+        self.lastEventTime[handle] = now
+        if let dropped = self.droppedFrameCount[handle], dropped > 0 {
+          if dropped % 100 == 0 {
+            print("📊 [PoseDetection] Dropped \(dropped) frames for handle \(handle) (throttled to ~15fps)")
+          }
+          self.droppedFrameCount[handle] = 0
+        }
+      } else {
+        self.droppedFrameCount[handle, default: 0] += 1
+      }
+    }
   }
 }
 
 // MARK: - PoseDetectorHelperLiveStreamDelegate
 
 extension PoseDetectionModule: PoseDetectorHelperLiveStreamDelegate {
-   func poseDetectorHelper(
-    _ PoseDetectorHelper: PoseDetectorHelper,
+  func poseDetectorHelper(
+    _ poseDetectorHelper: PoseDetectorHelper,
     onResults result: PoseDetectionResultBundle?,
     error: Error?
   ) {
     if let result = result {
-      sendResultsEvent(handle: PoseDetectorHelper.handle, bundle: result)
+      sendResultsEvent(handle: poseDetectorHelper.handle, bundle: result)
     } else if let error = error as NSError? {
       sendErrorEvent(
-        handle: PoseDetectorHelper.handle,
+        handle: poseDetectorHelper.handle,
         message: error.localizedDescription,
         code: error.code
       )

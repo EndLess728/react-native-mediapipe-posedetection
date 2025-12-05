@@ -11,29 +11,57 @@ import Foundation
 import VisionCamera
 import MediaPipeTasksVision
 
-// Note: internal (not public) to avoid Swift bridging header exposure
+// Internal to avoid exposing it via bridging header
 internal class PoseDetectionFrameProcessorPlugin: FrameProcessorPlugin {
-  internal override init(proxy: VisionCameraProxyHolder, options: [AnyHashable: Any]! = [:]) {
+
+  // Per‑detector throttling to keep CPU/memory under control
+  private var lastProcessedTime: [Int: TimeInterval] = [:]
+  private let minFrameInterval: TimeInterval = 0.066 // ~15 FPS
+  private let throttleQueue = DispatchQueue(
+    label: "com.mediapipe.frameprocessor.throttle"
+  )
+
+  internal override init(
+    proxy: VisionCameraProxyHolder,
+    options: [AnyHashable: Any]! = [:]
+  ) {
     super.init(proxy: proxy, options: options)
   }
 
-  internal override func callback(_ frame: Frame, withArguments arguments: [AnyHashable: Any]?) -> Any
-  {
+  internal override func callback(
+    _ frame: Frame,
+    withArguments arguments: [AnyHashable: Any]?
+  ) -> Any {
+    // Required arguments from JS
     guard let detectorHandleValue = arguments?["detectorHandle"] as? Double else {
       return false
     }
-    // get the orientation argument. If its nil, return false
     guard let orientation = arguments?["orientation"] as? String else {
       return false
     }
-    // convert the orientation string to a UIImage.Orientation
     guard let uiOrientation = uiImageOrientation(from: orientation) else {
       return false
     }
-    
 
-    // Now that we have a valid Double, attempt to retrieve the detector using it
-    guard let detector = PoseDetectionModule.detectorMap[Int(detectorHandleValue)] else {
+    let handle = Int(detectorHandleValue)
+
+    // Throttle per‑detector
+    var shouldProcess = false
+    throttleQueue.sync {
+      let now = Date().timeIntervalSince1970
+      let last = lastProcessedTime[handle] ?? 0
+      if now - last >= minFrameInterval {
+        lastProcessedTime[handle] = now
+        shouldProcess = true
+      }
+    }
+    guard shouldProcess else {
+      // Skip silently: returning true means "handled" so JS doesn't retry
+      return true
+    }
+
+    // Look up existing detector created via createDetector
+    guard let detector = PoseDetectionModule.detectorMap[handle] else {
       return false
     }
 
@@ -41,8 +69,10 @@ internal class PoseDetectionFrameProcessorPlugin: FrameProcessorPlugin {
     detector.detectAsync(
       sampleBuffer: buffer,
       orientation: uiOrientation,
-      timeStamps: Int(Date().timeIntervalSince1970 * 1000))
+      timeStamps: Int(Date().timeIntervalSince1970 * 1000)
+    )
     return true
   }
 }
+
 #endif
