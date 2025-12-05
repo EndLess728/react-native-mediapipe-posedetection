@@ -8,7 +8,7 @@ PODS:
   - hermes-engine (0.81.1):
     - hermes-engine/Pre-built (= 0.81.1)
   - hermes-engine/Pre-built (0.81.1)
-  - MediapipePosedetection (0.1.0):
+  - MediapipePosedetection (0.1.4):
     - boost
     - DoubleConversion
     - fast_float
@@ -2572,7 +2572,7 @@ SPEC CHECKSUMS:
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
   hermes-engine: 4f8246b1f6d79f625e0d99472d1f3a71da4d28ca
-  MediapipePosedetection: f251ecfe5da93aa0952e043c539964c0a876584d
+  MediapipePosedetection: afdfad480597b677e7b5f83df8e4b814496aa1c2
   MediaPipeTasksCommon: 6cfa29170d4900f04d250ad95ec058f14a741f38
   MediaPipeTasksVision: 7b1c0f5a5820e87e9d96926f5e65d8cd3744fac2
   RCT-Folly: 846fda9475e61ec7bcbf8a3fe81edfcaeb090669
