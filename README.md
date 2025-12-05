@@ -377,6 +377,10 @@ yarn ios  # or yarn android
 
 See the [contributing guide](CONTRIBUTING.md) to learn how to contribute to the repository and the development workflow.
 
+## Credits
+
+This library is based on the work from [react-native-mediapipe](https://github.com/cdiddy77/react-native-mediapipe) by [cdiddy77](https://github.com/cdiddy77). The pose detection module codes were taken from this repository and upgraded to support React Native's New Architecture (Turbo Modules).
+
 ## License
 
 MIT
