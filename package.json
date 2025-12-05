@@ -1,6 +1,6 @@
 {
   "name": "react-native-mediapipe-posedetection",
-  "version": "0.1.0",
+  "version": "0.1.5",
   "description": "PoseDetection using google's mediapipe models using poselandmark",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",

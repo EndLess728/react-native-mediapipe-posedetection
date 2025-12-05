@@ -1,7 +1,37 @@
 // NativeMediapipePosedetection.ts
 import type { TurboModule } from 'react-native';
 import { TurboModuleRegistry } from 'react-native';
-import type { CodegenTypes } from 'react-native';
+import type { EventEmitter } from 'react-native/Libraries/Types/CodegenTypes';
+
+/**
+ * Coordinate point in 3D space
+ */
+interface PoseLandmarkPoint {
+  x: number;
+  y: number;
+  z: number;
+}
+
+/**
+ * Payload for pose detection results event
+ */
+interface OnResultsPayload {
+  handle: number;
+  inferenceTime: number;
+  size: { width: number; height: number };
+  landmarks: Array<Array<PoseLandmarkPoint>>;
+  worldLandmarks: Array<Array<PoseLandmarkPoint>>;
+  segmentationMasks: Array<{}>;
+}
+
+/**
+ * Payload for pose detection error event
+ */
+interface OnErrorPayload {
+  handle: number;
+  message: string;
+  code: number;
+}
 
 /**
  * TurboModule specification for MediaPipe Pose Detection
@@ -51,23 +81,12 @@ export interface Spec extends TurboModule {
   /**
    * Event emitter for pose detection results
    */
-  readonly onResults: CodegenTypes.EventEmitter<{
-    handle: number;
-    inferenceTime: number;
-    size: { width: number; height: number };
-    landmarks: Array<Array<{ x: number; y: number; z: number }>>;
-    worldLandmarks: Array<Array<{ x: number; y: number; z: number }>>;
-    segmentationMasks: Array<{}>;
-  }>;
+  readonly onResults: EventEmitter<OnResultsPayload>;
 
   /**
    * Event emitter for pose detection errors
    */
-  readonly onError: CodegenTypes.EventEmitter<{
-    handle: number;
-    message: string;
-    code: number;
-  }>;
+  readonly onError: EventEmitter<OnErrorPayload>;
 }
 
 // Name MUST match native TurboModule registration
