@@ -1,10 +1,20 @@
 # react-native-mediapipe-posedetection
 
-PoseDetection using Google's MediaPipe models with pose landmark detection.
+High-performance pose detection for React Native using Google's MediaPipe models with optimized frame processing for smooth real-time tracking.
 
 > **⚠️ New Architecture Required**
 >
 > This library **only supports** React Native's **New Architecture** (Turbo Modules). You must enable the New Architecture in your app to use this library.
+
+## Features
+
+- ✨ Real-time pose detection via `react-native-vision-camera`
+- 🎯 33 pose landmarks per detected person
+- 🚀 Optimized for performance (~15 FPS throttling to prevent memory issues)
+- 📱 iOS & Android support
+- 🔥 GPU acceleration support
+- 🎨 Static image detection support
+- 🪝 Easy-to-use React hooks
 
 ## Requirements
 
@@ -13,15 +23,15 @@ PoseDetection using Google's MediaPipe models with pose landmark detection.
 - **iOS:** iOS 12.0+
 - **Android:** API 24+
 - **Dependencies:**
-  - `react-native-vision-camera` (for real-time detection)
-  - `react-native-worklets-core` (for frame processing)
+  - `react-native-vision-camera` ^4.0.0 (for real-time detection)
+  - `react-native-worklets-core` ^1.0.0 (for frame processing)
 
 ## Installation
 
 ```bash
-npm install react-native-mediapipe-posedetection
+npm install react-native-mediapipe-posedetection react-native-vision-camera react-native-worklets-core
 # or
-yarn add react-native-mediapipe-posedetection
+yarn add react-native-mediapipe-posedetection react-native-vision-camera react-native-worklets-core
 ```
 
 ### Enable New Architecture
@@ -53,15 +63,13 @@ cd ios && pod install
 
 ### iOS Setup
 
-Add the MediaPipe model to your iOS project:
-
-1. Download the pose landmarker model
+1. Download the MediaPipe pose landmarker model (e.g., `pose_landmarker_lite.task`)
 2. Add it to your Xcode project
-3. Ensure it's included in "Copy Bundle Resources"
+3. Ensure it's included in "Copy Bundle Resources" build phase
 
 ### Android Setup
 
-The MediaPipe dependencies are automatically included. No additional setup required.
+The MediaPipe dependencies are automatically included. Place your model file in `android/app/src/main/assets/`.
 
 ## Usage
 
@@ -72,6 +80,7 @@ import {
   usePoseDetection,
   RunningMode,
   Delegate,
+  KnownPoseLandmarks,
 } from 'react-native-mediapipe-posedetection';
 import { Camera, useCameraDevice } from 'react-native-vision-camera';
 
@@ -81,10 +90,15 @@ function PoseDetectionScreen() {
   const poseDetection = usePoseDetection(
     {
       onResults: (result) => {
-        console.log('Pose detected:', result.landmarks);
+        // result.landmarks contains detected pose keypoints
+        console.log('Number of poses:', result.landmarks.length);
+        if (result.landmarks[0]?.length > 0) {
+          const nose = result.landmarks[0][KnownPoseLandmarks.nose];
+          console.log('Nose position:', nose.x, nose.y);
+        }
       },
       onError: (error) => {
-        console.error('Detection error:', error);
+        console.error('Detection error:', error.message);
       },
     },
     RunningMode.LIVE_STREAM,
@@ -92,6 +106,8 @@ function PoseDetectionScreen() {
     {
       numPoses: 1,
       minPoseDetectionConfidence: 0.5,
+      minPosePresenceConfidence: 0.5,
+      minTrackingConfidence: 0.5,
       delegate: Delegate.GPU,
     }
   );
@@ -100,6 +116,7 @@ function PoseDetectionScreen() {
 
   return (
     <Camera
+      style={{ flex: 1 }}
       device={device}
       isActive={true}
       frameProcessor={poseDetection.frameProcessor}
@@ -122,13 +139,38 @@ async function detectPoseInImage(imagePath: string) {
     imagePath,
     'pose_landmarker_lite.task',
     {
-      numPoses: 1,
+      numPoses: 2, // Detect up to 2 people
       minPoseDetectionConfidence: 0.5,
       delegate: Delegate.GPU,
     }
   );
 
-  console.log('Detected poses:', result.landmarks);
+  console.log('Detected poses:', result.landmarks.length);
+  console.log('Inference time:', result.inferenceTime, 'ms');
+}
+```
+
+### Using the MediapipeCamera Component
+
+For a simpler setup, use the provided `MediapipeCamera` component:
+
+```typescript
+import { MediapipeCamera } from 'react-native-mediapipe-posedetection';
+
+function App() {
+  return (
+    <MediapipeCamera
+      style={{ flex: 1 }}
+      cameraPosition="back"
+      onResults={(result) => {
+        console.log('Pose detected:', result.landmarks);
+      }}
+      poseDetectionOptions={{
+        numPoses: 1,
+        minPoseDetectionConfidence: 0.5,
+      }}
+    />
+  );
 }
 ```
 
@@ -140,34 +182,128 @@ Hook for real-time pose detection.
 
 **Parameters:**
 
-- `callbacks`: Object with `onResults` and `onError` handlers
-- `runningMode`: `RunningMode.LIVE_STREAM` or `RunningMode.VIDEO`
-- `model`: Path to the MediaPipe model file
-- `options`: Configuration options (optional)
-  - `numPoses`: Maximum number of poses to detect (default: 1)
-  - `minPoseDetectionConfidence`: Minimum confidence for detection (default: 0.5)
-  - `minPosePresenceConfidence`: Minimum confidence for presence (default: 0.5)
-  - `minTrackingConfidence`: Minimum confidence for tracking (default: 0.5)
-  - `delegate`: `Delegate.CPU`, `Delegate.GPU`, or `Delegate.NNAPI` (Android)
-  - `mirrorMode`: `'no-mirror'`, `'mirror'`, or `'mirror-front-only'`
-  - `fpsMode`: `'none'` or number (target FPS)
+- **`callbacks`**: `DetectionCallbacks<PoseDetectionResultBundle>`
 
-**Returns:** Object with frame processor and camera handlers
+  - `onResults: (result: PoseDetectionResultBundle) => void` - Called when poses are detected
+  - `onError: (error: DetectionError) => void` - Called on detection errors
+
+- **`runningMode`**: `RunningMode`
+
+  - `RunningMode.LIVE_STREAM` - For camera/video input
+  - `RunningMode.VIDEO` - For video file processing
+  - `RunningMode.IMAGE` - For static images (use `PoseDetectionOnImage` instead)
+
+- **`model`**: `string` - Path to MediaPipe model file (e.g., `'pose_landmarker_lite.task'`)
+
+- **`options`**: `Partial<PoseDetectionOptions>` (optional)
+  - `numPoses`: `number` - Maximum number of poses to detect (default: 1)
+  - `minPoseDetectionConfidence`: `number` - min confidence threshold (default: 0.5)
+  - `minPosePresenceConfidence`: `number` - min presence threshold (default: 0.5)
+  - `minTrackingConfidence`: `number` - min tracking threshold (default: 0.5)
+  - `shouldOutputSegmentationMasks`: `boolean` - Include segmentation masks (default: false)
+  - `delegate`: `Delegate.CPU | Delegate.GPU | Delegate.NNAPI` - Processing delegate (default: GPU)
+  - `mirrorMode`: `'no-mirror' | 'mirror' | 'mirror-front-only'` - Camera mirroring
+  - `fpsMode`: `'none' | number` - Additional FPS throttling (default: 'none')
+
+**Returns:** `MediaPipeSolution`
+
+- `frameProcessor`: VisionCamera frame processor
+- `cameraViewLayoutChangeHandler`: Layout change handler
+- `cameraDeviceChangeHandler`: Camera device change handler
+- `cameraOrientationChangedHandler`: Orientation change handler
+- `resizeModeChangeHandler`: Resize mode handler
+- `cameraViewDimensions`: Current camera view dimensions
 
 ### `PoseDetectionOnImage(imagePath, model, options)`
 
 Detect poses in a static image.
 
-**Returns:** Promise resolving to detection results
+**Parameters:**
+
+- `imagePath`: `string` - Path to the image file
+- `model`: `string` - Path to MediaPipe model file
+- `options`: Same as `usePoseDetection` options
+
+**Returns:** `Promise<PoseDetectionResultBundle>`
+
+### Result Structure
+
+```typescript
+interface PoseDetectionResultBundle {
+  inferenceTime: number; // Milliseconds
+  size: { width: number; height: number };
+  landmarks: Landmark[][]; // Array of poses, each with 33 landmarks
+  worldLandmarks: Landmark[][]; // 3D world coordinates
+  segmentationMasks?: Mask[]; // Optional segmentation masks
+}
+
+interface Landmark {
+  x: number; // Normalized 0-1
+  y: number; // Normalized 0-1
+  z: number; // Depth (relative)
+  visibility?: number; // Confidence 0-1
+  presence?: number; // Presence confidence 0-1
+}
+```
+
+### Landmark Indices
+
+Use `KnownPoseLandmarks` for easy landmark access:
+
+```typescript
+import { KnownPoseLandmarks } from 'react-native-mediapipe-posedetection';
+
+const landmarks = result.landmarks[0];
+const nose = landmarks[KnownPoseLandmarks.nose];
+const leftShoulder = landmarks[KnownPoseLandmarks.leftShoulder];
+const rightWrist = landmarks[KnownPoseLandmarks.rightWrist];
+```
+
+**Available landmarks:**
+
+- Face: `nose`, `leftEye`, `rightEye`, `leftEar`, `rightEar`, `mouthLeft`, `mouthRight`
+- Upper body: `leftShoulder`, `rightShoulder`, `leftElbow`, `rightElbow`, `leftWrist`, `rightWrist`
+- Hands: `leftPinky`, `rightPinky`, `leftIndex`, `rightIndex`, `leftThumb`, `rightThumb`
+- Lower body: `leftHip`, `rightHip`, `leftKnee`, `rightKnee`, `leftAnkle`, `rightAnkle`
+- Feet: `leftHeel`, `rightHeel`, `leftFootIndex`, `rightFootIndex`
+
+## Performance Optimizations
+
+This library includes critical performance optimizations for React Native's new architecture:
+
+### ⚡ Automatic Frame Throttling
+
+To prevent memory pressure and crashes, the library automatically throttles:
+
+1. **Frame processing** to ~15 FPS (MediaPipe detection calls)
+2. **Event emissions** to ~15 FPS (JavaScript callbacks)
+
+This dual-layer throttling ensures:
+
+- ✅ Stable memory usage
+- ✅ No crashes during extended use
+- ✅ Smooth pose detection experience
+- ✅ Efficient battery usage
+
+The throttling is transparent and requires no configuration. 15 FPS is sufficient for smooth pose tracking in most use cases.
+
+### 🎯 Additional FPS Control
+
+For even more control, use the `fpsMode` option:
+
+```typescript
+usePoseDetection(callbacks, RunningMode.LIVE_STREAM, 'model.task', {
+  fpsMode: 10, // Process frames at 10 FPS
+});
+```
 
 ## Migration from Old Architecture
 
-If you were using a previous version that supported the Old Architecture:
+If you were using a previous version that supported the Bridge architecture:
 
 1. **Upgrade React Native** to 0.74.0 or higher
-2. **Enable New Architecture** (see instructions above)
-3. **Update your app configuration** to remove any Old Architecture compatibility layers
-4. **Rebuild your app** completely:
+2. **Enable New Architecture** (see installation instructions)
+3. **Rebuild your app completely:**
 
    ```bash
    # iOS
@@ -201,6 +337,45 @@ The API remains the same, so your application code shouldn't need changes.
 1. Verify the model file path is correct
 2. Ensure the model file is included in your app bundle
 3. Check that the model file is a valid MediaPipe pose landmarker model
+
+### Memory Warnings / Crashes on iOS
+
+**Solution:** The library automatically throttles to prevent this. If you still experience issues:
+
+1. Ensure you're on the latest version
+2. Reduce `numPoses` to 1
+3. Set `shouldOutputSegmentationMasks: false`
+4. Use `Delegate.CPU` instead of `Delegate.GPU` if GPU memory is limited
+
+### Poor Performance
+
+**Solutions:**
+
+1. Use `pose_landmarker_lite.task` instead of `pose_landmarker_full.task`
+2. Set `fpsMode: 10` for lower frame processing
+3. Reduce `numPoses` if you don't need to detect multiple people
+4. Enable GPU acceleration: `delegate: Delegate.GPU`
+
+## Example App
+
+Check out the [example](./example) directory for a complete working app demonstrating:
+
+- Real-time pose detection
+- Pose landmark visualization
+- Camera controls
+- Performance optimization
+
+Run the example:
+
+```bash
+cd example
+yarn install
+yarn ios  # or yarn android
+```
+
+## Contributing
+
+See the [contributing guide](CONTRIBUTING.md) to learn how to contribute to the repository and the development workflow.
 
 ## License
 
