@@ -51,12 +51,23 @@ export interface Spec extends TurboModule {
   /**
    * Event emitter for pose detection results
    */
-  readonly onResults: CodegenTypes.EventEmitter<Object>;
+  readonly onResults: CodegenTypes.EventEmitter<{
+    handle: number;
+    inferenceTime: number;
+    size: { width: number; height: number };
+    landmarks: Array<Array<{ x: number; y: number; z: number }>>;
+    worldLandmarks: Array<Array<{ x: number; y: number; z: number }>>;
+    segmentationMasks: Array<{}>;
+  }>;
 
   /**
    * Event emitter for pose detection errors
    */
-  readonly onError: CodegenTypes.EventEmitter<Object>;
+  readonly onError: CodegenTypes.EventEmitter<{
+    handle: number;
+    message: string;
+    code: number;
+  }>;
 }
 
 // Name MUST match native TurboModule registration
