@@ -21,6 +21,7 @@ import {
   type DetectionCallbacks,
   type ResizeMode,
   type ImageOrientation,
+  type ViewCoordinator,
 } from './shared/types';
 import { BaseViewCoordinator } from './shared/convert';
 import { useRunOnJS, useSharedValue } from 'react-native-worklets-core';
@@ -43,7 +44,9 @@ export type {
   ImageOrientation,
   DetectionError,
   DetectionCallbacks,
+  ViewCoordinator,
 };
+export { BaseViewCoordinator } from './shared/convert';
 
 const plugin = VisionCameraProxy.initFrameProcessorPlugin('poseDetection', {});
 
