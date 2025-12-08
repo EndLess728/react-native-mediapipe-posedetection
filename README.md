@@ -5,7 +5,6 @@
   <img src="https://img.shields.io/npm/dw/react-native-mediapipe-posedetection?color=blue&style=flat-square&logo=npm" alt="npm weekly downloads"/>
 </div>
 
-
 High-performance pose detection for React Native using Google's MediaPipe models with optimized frame processing for smooth real-time tracking.
 
 You can find the package on npm: [react-native-mediapipe-posedetection](https://www.npmjs.com/package/react-native-mediapipe-posedetection)
@@ -78,6 +77,68 @@ cd ios && pod install
 ### Android Setup
 
 The MediaPipe dependencies are automatically included. Place your model file in `android/app/src/main/assets/`.
+
+### Expo Integration
+
+This package includes an Expo config plugin for automatically copying asset files to your native projects.
+
+Add the plugin to your `app.json` or `app.config.js`:
+
+#### app.json
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "react-native-mediapipe-posedetection",
+        {
+          "assetsPaths": ["./assets/models"],
+          "ignoredPattern": "^\\."
+        }
+      ]
+    ]
+  }
+}
+```
+
+#### app.config.js
+
+```javascript
+export default {
+  expo: {
+    plugins: [
+      [
+        'react-native-mediapipe-posedetection',
+        {
+          assetsPaths: [
+            'node_modules/react-native-mediapipe-posedetection/assets',
+          ],
+          ignoredPattern: '^\\.',
+        },
+      ],
+    ],
+  },
+};
+```
+
+**Plugin Options:**
+
+- `assetsPaths` (string[]): Array of paths containing assets to copy to native projects
+- `ignoredPattern` (string, optional): Regex pattern to ignore certain files
+
+The plugin will automatically copy your MediaPipe model files to:
+
+- **Android:** `android/app/src/main/assets/`
+- **iOS:** iOS project root with Xcode references
+
+After adding the plugin, run:
+
+```bash
+npx expo prebuild
+# or
+eas build
+```
 
 ## Usage
 

@@ -1,0 +1,8 @@
+{
+  "name": "react-native-mediapipe-posedetection-plugin",
+  "version": "0.2.0",
+  "description": "Expo Config Plugin for react-native-mediapipe-posedetection",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "private": true
+}
