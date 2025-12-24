@@ -1,1 +1,1 @@
-module.exports = require('./lib/commonjs/plugin/withCustomAssets').default;
+module.exports = require('./lib/commonjs/plugin/withMediapipePosedetection');
