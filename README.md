@@ -5,7 +5,6 @@
   <img src="https://img.shields.io/npm/dw/react-native-mediapipe-posedetection?color=blue&style=flat-square&logo=npm" alt="npm weekly downloads"/>
 </div>
 
-
 High-performance pose detection for React Native using Google's MediaPipe models with optimized frame processing for smooth real-time tracking.
 
 You can find the package on npm: [react-native-mediapipe-posedetection](https://www.npmjs.com/package/react-native-mediapipe-posedetection)
@@ -41,6 +40,35 @@ npm install react-native-mediapipe-posedetection react-native-vision-camera reac
 # or
 yarn add react-native-mediapipe-posedetection react-native-vision-camera react-native-worklets-core
 ```
+
+### Expo Configuration
+
+If you are using Expo, you can use the built-in config plugin to automatically copy your MediaPipe model files to the native Android and iOS projects during prebuild.
+
+1. Add your model files (e.g., `pose_landmarker_lite.task`) to a directory in your project (e.g., `./assets/models/`).
+2. Update your `app.json` or `app.config.js`:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "react-native-mediapipe-posedetection",
+        {
+          "assetsPaths": ["./assets/models/"]
+        }
+      ]
+    ]
+  }
+}
+```
+
+This plugin will copy all files from the specified `assetsPaths` to:
+
+- **Android:** `android/app/src/main/assets/`
+- **iOS:** The root of the Xcode project (and add them to the build resources).
+
+> **Note:** The `assetsPaths` are relative to your project root.
 
 ### Enable New Architecture
 
