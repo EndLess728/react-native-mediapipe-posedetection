@@ -2,6 +2,7 @@
 
 <div style="display: flex; gap: 10px; align-items: center;">
   <img src="https://img.shields.io/npm/v/react-native-mediapipe-posedetection?color=orange&style=flat-square&logo=npm" alt="npm version"/>
+  <img src="https://img.shields.io/npm/dt/react-native-mediapipe-posedetection?color=blue&style=flat-square&logo=npm" alt="npm total downloads"/>
   <img src="https://img.shields.io/npm/dw/react-native-mediapipe-posedetection?color=blue&style=flat-square&logo=npm" alt="npm weekly downloads"/>
 </div>
 
