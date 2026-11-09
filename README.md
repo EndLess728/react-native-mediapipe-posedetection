@@ -20,7 +20,7 @@ You can find the package on npm: [react-native-mediapipe-posedetection](https://
 
 - ✨ Real-time pose detection via `react-native-vision-camera`
 - 🎯 33 pose landmarks per detected person
-- 🚀 Optimized for performance (~15 FPS throttling to prevent memory issues)
+- 🚀 Optimized for performance (configurable FPS limit, built-in event throttling on iOS)
 - 📱 iOS & Android support
 - 🔥 GPU acceleration support
 - 🎨 Static image detection support
@@ -30,7 +30,7 @@ You can find the package on npm: [react-native-mediapipe-posedetection](https://
 
 - **React Native:** 0.74.0 or higher
 - **New Architecture:** Must be enabled
-- **iOS:** iOS 12.0+
+- **iOS:** the minimum iOS version supported by your React Native version
 - **Android:** API 24+
 - **Dependencies:**
   - `react-native-vision-camera` ^4.0.0 (for real-time detection)
@@ -71,7 +71,7 @@ This plugin will copy all files from the specified `assetsPaths` to:
 - **Android:** `android/app/src/main/assets/`
 - **iOS:** The root of the Xcode project (and add them to the build resources).
 
-> **Note:** The `assetsPaths` are relative to your project root.
+> **Note:** The `assetsPaths` are relative to your project root. You can also pass `ignoredPattern` (a regex string) to skip files, e.g. `"\\.md$"`.
 
 ### Enable New Architecture
 
@@ -129,10 +129,12 @@ function PoseDetectionScreen() {
   const poseDetection = usePoseDetection(
     {
       onResults: (result) => {
-        // result.landmarks contains detected pose keypoints
-        console.log('Number of poses:', result.landmarks.length);
-        if (result.landmarks[0]?.length > 0) {
-          const nose = result.landmarks[0][KnownPoseLandmarks.nose];
+        // result.results[0].landmarks is an array of people, each with 33 landmarks
+        const people = result.results[0]?.landmarks ?? [];
+        console.log('Number of poses:', people.length);
+        const firstPerson = people[0];
+        if (firstPerson) {
+          const nose = firstPerson[KnownPoseLandmarks.nose];
           console.log('Nose position:', nose.x, nose.y);
         }
       },
@@ -158,8 +160,10 @@ function PoseDetectionScreen() {
       style={{ flex: 1 }}
       device={device}
       isActive={true}
+      pixelFormat="rgb"
       frameProcessor={poseDetection.frameProcessor}
       onLayout={poseDetection.cameraViewLayoutChangeHandler}
+      onOutputOrientationChanged={poseDetection.cameraOrientationChangedHandler}
     />
   );
 }
@@ -184,30 +188,41 @@ async function detectPoseInImage(imagePath: string) {
     }
   );
 
-  console.log('Detected poses:', result.landmarks.length);
+  console.log('Detected poses:', result.results[0]?.landmarks.length ?? 0);
   console.log('Inference time:', result.inferenceTime, 'ms');
 }
 ```
 
 ### Using the MediapipeCamera Component
 
-For a simpler setup, use the provided `MediapipeCamera` component:
+For a simpler setup, pass the result of `usePoseDetection` to the provided `MediapipeCamera` component. It wires up the frame processor, layout, orientation and camera device handlers for you:
 
 ```typescript
-import { MediapipeCamera } from 'react-native-mediapipe-posedetection';
+import {
+  MediapipeCamera,
+  usePoseDetection,
+  RunningMode,
+} from 'react-native-mediapipe-posedetection';
 
 function App() {
+  const solution = usePoseDetection(
+    {
+      onResults: (result) => {
+        console.log('Pose detected:', result.results[0]?.landmarks);
+      },
+      onError: (error) => console.warn(error.message),
+    },
+    RunningMode.LIVE_STREAM,
+    'pose_landmarker_lite.task',
+    { numPoses: 1, minPoseDetectionConfidence: 0.5 }
+  );
+
   return (
     <MediapipeCamera
       style={{ flex: 1 }}
-      cameraPosition="back"
-      onResults={(result) => {
-        console.log('Pose detected:', result.landmarks);
-      }}
-      poseDetectionOptions={{
-        numPoses: 1,
-        minPoseDetectionConfidence: 0.5,
-      }}
+      solution={solution}
+      activeCamera="back" // 'front' (default) | 'back'
+      resizeMode="cover" // 'cover' (default) | 'contain'
     />
   );
 }
@@ -223,7 +238,7 @@ Hook for real-time pose detection.
 
 - **`callbacks`**: `DetectionCallbacks<PoseDetectionResultBundle>`
 
-  - `onResults: (result: PoseDetectionResultBundle) => void` - Called when poses are detected
+  - `onResults: (result: PoseDetectionResultBundle, viewCoordinator: ViewCoordinator) => void` - Called when poses are detected. `viewCoordinator` converts normalized landmarks to screen coordinates
   - `onError: (error: DetectionError) => void` - Called on detection errors
 
 - **`runningMode`**: `RunningMode`
@@ -240,8 +255,9 @@ Hook for real-time pose detection.
   - `minPosePresenceConfidence`: `number` - min presence threshold (default: 0.5)
   - `minTrackingConfidence`: `number` - min tracking threshold (default: 0.5)
   - `shouldOutputSegmentationMasks`: `boolean` - Include segmentation masks (default: false)
-  - `delegate`: `Delegate.CPU | Delegate.GPU | Delegate.NNAPI` - Processing delegate (default: GPU)
-  - `mirrorMode`: `'no-mirror' | 'mirror' | 'mirror-front-only'` - Camera mirroring
+  - `delegate`: `Delegate.CPU | Delegate.GPU` - Processing delegate (default: GPU)
+  - `mirrorMode`: `'no-mirror' | 'mirror' | 'mirror-front-only'` - Camera mirroring (default: `'mirror-front-only'` on Android, `'no-mirror'` on iOS)
+  - `forceCameraOrientation` / `forceOutputOrientation`: `ImageOrientation` - Override detected orientations
   - `fpsMode`: `'none' | number` - Additional FPS throttling (default: 'none')
 
 **Returns:** `MediaPipeSolution`
@@ -269,11 +285,16 @@ Detect poses in a static image.
 
 ```typescript
 interface PoseDetectionResultBundle {
+  results: PoseLandmarkerResult[]; // One entry for live camera frames and single images
   inferenceTime: number; // Milliseconds
-  size: { width: number; height: number };
-  landmarks: Landmark[][]; // Array of poses, each with 33 landmarks
-  worldLandmarks: Landmark[][]; // 3D world coordinates
-  segmentationMasks?: Mask[]; // Optional segmentation masks
+  inputImageWidth: number;
+  inputImageHeight: number;
+}
+
+interface PoseLandmarkerResult {
+  landmarks: Landmark[][]; // [person][landmarkIndex], 33 landmarks per person, normalized
+  worldLandmarks: Landmark[][]; // [person][landmarkIndex], 3D world coordinates in meters
+  segmentationMasks: Mask[];
 }
 
 interface Landmark {
@@ -292,7 +313,7 @@ Use `KnownPoseLandmarks` for easy landmark access:
 ```typescript
 import { KnownPoseLandmarks } from 'react-native-mediapipe-posedetection';
 
-const landmarks = result.landmarks[0];
+const landmarks = result.results[0]?.landmarks[0]; // first person
 const nose = landmarks[KnownPoseLandmarks.nose];
 const leftShoulder = landmarks[KnownPoseLandmarks.leftShoulder];
 const rightWrist = landmarks[KnownPoseLandmarks.rightWrist];
@@ -310,25 +331,13 @@ const rightWrist = landmarks[KnownPoseLandmarks.rightWrist];
 
 This library includes critical performance optimizations for React Native's new architecture:
 
-### ⚡ Automatic Frame Throttling
+### ⚡ Event Throttling on iOS
 
-To prevent memory pressure and crashes, the library automatically throttles:
+On iOS, the native module caps result events sent to JavaScript at ~15 per second to keep memory stable during long sessions. This needs no configuration. Android delivers every result, so setting `fpsMode` (below) matters more there.
 
-1. **Frame processing** to ~15 FPS (MediaPipe detection calls)
-2. **Event emissions** to ~15 FPS (JavaScript callbacks)
+### 🎯 FPS Control
 
-This dual-layer throttling ensures:
-
-- ✅ Stable memory usage
-- ✅ No crashes during extended use
-- ✅ Smooth pose detection experience
-- ✅ Efficient battery usage
-
-The throttling is transparent and requires no configuration. 15 FPS is sufficient for smooth pose tracking in most use cases.
-
-### 🎯 Additional FPS Control
-
-For even more control, use the `fpsMode` option:
+Limit how many frames are sent to MediaPipe with the `fpsMode` option. 10–15 FPS is enough for smooth tracking in most apps and saves battery:
 
 ```typescript
 usePoseDetection(callbacks, RunningMode.LIVE_STREAM, 'model.task', {
@@ -379,12 +388,13 @@ The API remains the same, so your application code shouldn't need changes.
 
 ### Memory Warnings / Crashes on iOS
 
-**Solution:** The library automatically throttles to prevent this. If you still experience issues:
+**Solution:**
 
 1. Ensure you're on the latest version
-2. Reduce `numPoses` to 1
-3. Set `shouldOutputSegmentationMasks: false`
-4. Use `Delegate.CPU` instead of `Delegate.GPU` if GPU memory is limited
+2. Set `fpsMode: 15` (or lower)
+3. Reduce `numPoses` to 1
+4. Set `shouldOutputSegmentationMasks: false`
+5. Use `Delegate.CPU` instead of `Delegate.GPU` if GPU memory is limited
 
 ### Poor Performance
 
