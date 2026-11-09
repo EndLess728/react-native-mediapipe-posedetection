@@ -76,7 +76,7 @@
   "bugs": {
     "url": "https://github.com/EndLess728/react-native-mediapipe-posedetection/issues"
   },
-  "homepage": "https://github.com/EndLess728/react-native-mediapipe-posedetection#readme",
+  "homepage": "https://endless728.github.io/react-native-mediapipe-posedetection/",
   "dependencies": {
     "fs-extra": "^11.2.0"
   },

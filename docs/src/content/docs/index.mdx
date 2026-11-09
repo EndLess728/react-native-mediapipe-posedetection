@@ -1,0 +1,46 @@
+---
+title: React Native MediaPipe Pose Detection
+description: Real-time body pose detection for React Native and Expo apps using Google MediaPipe. 33 landmarks per person, GPU acceleration, and an Expo config plugin.
+template: splash
+hero:
+  tagline: Real-time pose detection for React Native and Expo, powered by Google MediaPipe. Track 33 body landmarks from the camera or from a photo, on iOS and Android.
+  image:
+    file: ../../assets/logo.svg
+  actions:
+    - text: Get started
+      link: getting-started/introduction/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/EndLess728/react-native-mediapipe-posedetection
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid stagger>
+  <Card title="Live camera tracking" icon="rocket">
+    Runs as a VisionCamera frame processor, so detection happens natively on every frame without going through the JS thread.
+  </Card>
+  <Card title="33 body landmarks" icon="star">
+    Face, shoulders, elbows, wrists, hips, knees, ankles and feet, with normalized and 3D world coordinates.
+  </Card>
+  <Card title="GPU accelerated" icon="setting">
+    Uses the MediaPipe GPU delegate by default, with a CPU fallback for devices that need it.
+  </Card>
+  <Card title="Expo ready" icon="puzzle">
+    A config plugin copies your model files into the native projects during prebuild.
+  </Card>
+</CardGrid>
+
+## Install
+
+```bash
+npx expo install react-native-mediapipe-posedetection react-native-vision-camera react-native-worklets-core
+```
+
+Then follow the [installation guide](getting-started/installation/) to add a model file and enable frame processors.
+
+## Good for
+
+Fitness and workout apps, rep counters, yoga and posture feedback, physiotherapy tools, sports form analysis, motion-controlled games and AR effects.

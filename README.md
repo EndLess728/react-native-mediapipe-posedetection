@@ -10,6 +10,8 @@ High-performance pose detection for React Native using Google's MediaPipe models
 
 You can find the package on npm: [react-native-mediapipe-posedetection](https://www.npmjs.com/package/react-native-mediapipe-posedetection)
 
+📖 **[Read the full documentation →](https://endless728.github.io/react-native-mediapipe-posedetection/)**
+
 > **⚠️ New Architecture Required**
 >
 > This library **only supports** React Native's **New Architecture** (Turbo Modules). You must enable the New Architecture in your app to use this library.

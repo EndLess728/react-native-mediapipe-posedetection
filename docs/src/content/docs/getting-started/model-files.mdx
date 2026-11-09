@@ -1,0 +1,68 @@
+---
+title: Model files
+description: Which MediaPipe pose landmarker model to use (lite, full or heavy), where to download it, and how to bundle it with your iOS and Android app.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+The library doesn't ship a model. You bundle one with your app and pass its file name to `usePoseDetection` or `PoseDetectionOnImage`.
+
+## Pick a model
+
+Google publishes three pose landmarker models. They all output the same 33 landmarks; the bigger ones are more accurate and slower.
+
+| Model | Download | Best for |
+| --- | --- | --- |
+| Lite | [pose_landmarker_lite.task](https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task) | Live camera on most phones. **Start here.** |
+| Full | [pose_landmarker_full.task](https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task) | Better accuracy on recent devices |
+| Heavy | [pose_landmarker_heavy.task](https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task) | Static images, or when accuracy matters more than frame rate |
+
+## Bundle it with your app
+
+<Tabs syncKey="platform">
+<TabItem label="Expo">
+
+Put the file in a folder in your project, for example `assets/models/pose_landmarker_lite.task`, and point the config plugin at that folder:
+
+```json title="app.json"
+{
+  "expo": {
+    "plugins": [
+      ["react-native-mediapipe-posedetection", { "assetsPaths": ["./assets/models/"] }]
+    ]
+  }
+}
+```
+
+On `npx expo prebuild` the plugin copies every file in that folder to:
+
+- **Android:** `android/app/src/main/assets/`
+- **iOS:** the root of the Xcode project, added to *Copy Bundle Resources*
+
+Run `npx expo prebuild --clean` again whenever you add or change a model. See [Expo config plugin](../../api/expo-plugin/) for all options.
+
+</TabItem>
+<TabItem label="Bare React Native">
+
+**Android:** copy the file into `android/app/src/main/assets/` (create the folder if it doesn't exist).
+
+**iOS:**
+
+1. In Xcode, drag the `.task` file into your app's project navigator.
+2. Tick **Copy items if needed** and make sure your app target is checked.
+3. Under the target's **Build Phases → Copy Bundle Resources**, confirm the file is listed.
+
+</TabItem>
+</Tabs>
+
+## Referencing the model in code
+
+Pass just the file name. The native side looks it up in the app bundle (iOS) or assets folder (Android):
+
+```ts
+usePoseDetection(callbacks, RunningMode.LIVE_STREAM, 'pose_landmarker_lite.task');
+```
+
+:::tip
+If you get **"Failed to create detector"**, the model file almost always isn't in the build. Check the folders above, then do a clean rebuild.
+:::
