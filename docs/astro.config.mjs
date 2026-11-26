@@ -25,6 +25,7 @@ export default defineConfig({
           label: 'npm',
           href: 'https://www.npmjs.com/package/react-native-mediapipe-posedetection',
         },
+        { icon: 'heart', label: 'Buy me a coffee', href: 'https://www.buymeacoffee.com/mantu.728' },
       ],
       editLink: {
         baseUrl:
@@ -112,6 +113,7 @@ export default defineConfig({
             { label: 'Expo config plugin', slug: 'api/expo-plugin' },
           ],
         },
+        { label: 'Support the project ☕', slug: 'support' },
       ],
     }),
   ],

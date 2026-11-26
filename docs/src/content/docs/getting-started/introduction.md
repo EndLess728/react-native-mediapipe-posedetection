@@ -33,6 +33,10 @@ This library is a TurboModule and does not work on the old bridge architecture. 
 
 The pose detection code is based on [react-native-mediapipe](https://github.com/cdiddy77/react-native-mediapipe) by cdiddy77, rewritten as a TurboModule for the New Architecture.
 
+## Support
+
+`react-native-mediapipe-posedetection` is free and open source. If it saves you time, you can [buy me a coffee](https://www.buymeacoffee.com/mantu.728) or [donate via PayPal](https://paypal.me/Monty728). See [Support the project](../../support/) for other ways to help.
+
 ## Next
 
 Head to [Installation](../installation/).
